@@ -1,0 +1,96 @@
+---
+title: "comp2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## d
+
+In this task, consider the conditional prior proposal distribution, $Q(\mathbf{\tau_I^´}|, \mathbf{\tau_{-I}}, \sigma_u^2, \mathbf{y}) = p(\mathbf{\tau_I^´}|, \mathbf{\tau_{-I}}, \sigma_u^2) $, where $I \subseteq \{1,...,366\}$ and $\mathbf{\tau}_{-I} = \mathbf{\tau}_{\{1,...,366\}\backslash I}$. 
+
+The acceptance probablitiy is defined as 
+$$
+\alpha(\mathbf{\tau_I^´}|, \mathbf{\tau_{-I}}, \sigma_u^2, \mathbf{y}) = \text{min}\{1,  \frac{p(\mathbf{\tau^´}|\mathbf{y}, \sigma_u^2)\cdot Q(\mathbf{\tau_I}|, \mathbf{\tau_{-I}}, \sigma_u^2, \mathbf{y})}{p(\mathbf{\tau}|\mathbf{y}, \sigma_u^2)\cdot Q(\mathbf{\tau_I^´}|, \mathbf{\tau_{-I}}, \sigma_u^2, \mathbf{y})}\}
+$$
+For the rest of this task only the latter term will be looked at. It will be proved that 
+$$
+\frac{p(\mathbf{\tau^´}|\mathbf{y}, \sigma_u^2)\cdot Q(\mathbf{\tau_I}|, \mathbf{\tau_{-I}}, \sigma_u^2, \mathbf{y})}{p(\mathbf{\tau}|\mathbf{y}, \sigma_u^2)\cdot Q(\mathbf{\tau_I^´}|, \mathbf{\tau_{-I}}, \sigma_u^2, \mathbf{y})} 
+$$
+
+$$
+\begin{aligned}
+\alpha(\mathbf{\tau_I^´}|, \mathbf{\tau_{-I}}, \sigma_u^2, \mathbf{y}) &= \frac{p(\mathbf{\tau^´}|\mathbf{y}, \sigma_u^2)\cdot Q(\mathbf{\tau_I}|, \mathbf{\tau_{-I}}, \sigma_u^2, \mathbf{y})}{p(\mathbf{\tau}|\mathbf{y}, \sigma_u^2)\cdot Q(\mathbf{\tau_I^´}|, \mathbf{\tau_{-I}}, \sigma_u^2, \mathbf{y})} \\
+&= \frac{p(\mathbf{\tau^´}|\mathbf{y}, \sigma_u^2)\cdot p(\mathbf{\tau_I}|, \mathbf{\tau_{-I}}, \sigma_u^2)}{p(\mathbf{\tau}|\mathbf{y}, \sigma_u^2)\cdot p(\mathbf{\tau_I^´}|, \mathbf{\tau_{-I}}, \sigma_u^2)}
+\end{aligned}
+$$
+The posterior distribution $p(\mathbf{\tau^´}|\mathbf{y}, \sigma_u^2)$ can be rewritten as.
+
+$$
+\begin{aligned}
+p(\mathbf{\tau^´}|\mathbf{y}, \sigma_u^2) &= \frac{ p(\mathbf{\tau^´},\mathbf{y}|\sigma_u^2)}{p(\mathbf{y}|\sigma_u^2)}\\
+&\propto p(\mathbf{y}|\tau^´,\sigma_u^2) p(\mathbf{\tau^´}|\sigma_u^2) \\
+&= p(\mathbf{y}|\tau^´,\sigma_u^2) p(\mathbf{\tau}^´_{I}, \mathbf{\tau}_{-I} |\sigma_u^2)\\
+&= p(\mathbf{y}|\mathbf{\tau}´,\sigma_u^2) p(\mathbf{\tau}^´_{I} |\mathbf{\tau}_{-I}, \sigma_u^2)p( \mathbf{\tau}_{-I} |\sigma_u^2)
+\end{aligned}
+$$
+where $\mathbf{\tau´ = (\mathbf{\tau}^´_{I}, \mathbf{\tau}_{-I} )}$. Similarly, $p(\mathbf{\tau^´}|\mathbf{y}, \sigma_u^2)$ can be written as.
+
+$$
+\begin{aligned}
+p(\mathbf{\tau}|\mathbf{y}, \sigma_u^2) &= \frac{ p(\mathbf{\tau},\mathbf{y}|\sigma_u^2)}{p(\mathbf{y}|\sigma_u^2)}\\
+&\propto p(\mathbf{y}|\mathbf{\tau},\sigma_u^2) p(\mathbf{\tau}_{I} |\mathbf{\tau}_{-I}, \sigma_u^2)p( \mathbf{\tau}_{-I} |\sigma_u^2)
+\end{aligned}
+$$
+Thus, the acceptence probability becomes
+$$
+\begin{aligned}
+\alpha(\mathbf{\tau_I^´}|, \mathbf{\tau_{-I}}, \sigma_u^2, \mathbf{y}) 
+&=\frac{\frac{p(\mathbf{y}|\mathbf{\tau}´,\sigma_u^2) p(\mathbf{\tau^´}_{I} |\mathbf{\tau}_{-I}, \sigma_u^2)p( \mathbf{\tau}_{-I} |\sigma_u^2)}{p(\mathbf{y}|\sigma_u^2)}\cdot p(\mathbf{\tau_I}|, \mathbf{\tau_{-I}}, \sigma_u^2)}{\frac{p(\mathbf{y}|\mathbf{\tau},\sigma_u^2) p(\mathbf{\tau}_{I} |\mathbf{\tau}_{-I}, \sigma_u^2)p( \mathbf{\tau}_{-I} |\sigma_u^2) }{p(\mathbf{y}|\sigma_u^2)}\cdot p(\mathbf{\tau_I^´}|, \mathbf{\tau_{-I}}, \sigma_u^2)}\\
+&= \frac{p(\mathbf{y}|\mathbf{\tau}´,\sigma_u^2)}{p(\mathbf{y}|\mathbf{\tau},\sigma_u^2)}
+\end{aligned}
+$$
+since the number of days with rain is sampled over many years, it is reasonable to assume that the number of days with rain are independent of each other ($\mathbf{y}_I$ and $\mathbf{y}_{-I}$ are independent).
+
+$$
+\alpha(\mathbf{\tau_I^´}|, \mathbf{\tau_{-I}}, \sigma_u^2, \mathbf{y})  = \frac{p(\mathbf{y}|\mathbf{\tau}´,\sigma_u^2)}{p(\mathbf{y}|\mathbf{\tau},\sigma_u^2) }
+= \frac{p(\mathbf{y}_I|\mathbf{\tau}´,\sigma_u^2)p(\mathbf{y}_{-I}|\mathbf{\tau},\sigma_u^2)}{p(\mathbf{y}_I|\mathbf{\tau},\sigma_u^2)p(\mathbf{y}_{-I}|\mathbf{\tau},\sigma_u^2)} = \frac{p(\mathbf{y}_I|\mathbf{\tau}´,\sigma_u^2)}{p(\mathbf{y}_I|\mathbf{\tau},\sigma_u^2)}
+$$
+Another reasonable assumption is that $\mathbf{y}_I$ is independent of $\mathbf{\tau}_{-I}$, similarly for $\mathbf{y}_{-I}$. This yields the acceptance probability.
+
+$$
+\alpha_{+}(\mathbf{\tau_I^´}|, \mathbf{\tau_{-I}}, \sigma_u^2, \mathbf{y})  = \frac{p(\mathbf{y}_I|\mathbf{\tau}´_{I},\sigma_u^2)}{p(\mathbf{y}_I|\mathbf{\tau}_{I},\sigma_u^2)}
+$$
+Thus, the proof it completed. 
+```{r}
+binomial()
+
+mcmc_RW = function(sd, ntimes = 1000)
+{
+  x = numeric(ntimes)
+  x[1] = runif(1)
+  for(i in 2:ntimes)
+  {
+    
+    x_prop = rnorm(1,mean = x[i-1], sd = sd)
+    
+    alpha = min(1, Bin)
+    if(runif(1)< alpha)
+      x[i]=x_prop
+    else
+      x[i] = x[i-1]
+  }
+  return(x)
+}
+
+x = numeric(10)
+
+
+```
+
+
+# 2
+
+In this task the Tokyo rainfall dataset will be looked at, once again. Only this time the probability for rainfall more than one mm will be predicted using INLA (Integrated nested laplace approximation)

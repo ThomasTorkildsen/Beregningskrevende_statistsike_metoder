@@ -1,0 +1,801 @@
+---
+title: "Excercise 1, Spring 2022"
+subtitle: "TMA4300 - Computer Intensive Statistical Methods"
+author: "Sivert Laukli, Thomas Torkildsen"
+date: "31 1 2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message = F, error = F, warning = F} 
+# load packages here
+library(ggplot2)
+library(tidyverse)
+```
+
+## Problem A: 
+
+### A1 
+To begin with, we create a function `expsample()` generating `n` samples from an exponential distribution with probability density function (PDF)
+$$
+f(x ; \lambda) = \frac{1}{\lambda}e^{-\lambda x}.
+$$
+```{r}
+expsample <- function(lambda, n){
+  u = runif(n)
+  x = -1*log(u)/lambda
+  return(x)
+}
+lambda = 0.5
+hist(expsample(lambda, 1000), n = 50, freq = F)
+lines(seq(0, 15, 0.01), dexp(seq(0, 15, 0.01), rate = lambda), col = "red", lwd = 2)
+```
+
+### A2
+We consider the PDF
+$$
+g(x) = \begin{cases}
+cx^{\alpha-1}, & 0<x<1, \\
+ce^{-x}, & 1 \leq x, \\
+0, & \textrm{otherwise}
+\end{cases},
+$$
+where $\alpha$ is a parameter and $c$ is a normalizing constant.
+
+#### a) 
+To compute the cumulative distribution function (CDF) $G(x)$ of $g(x)$, we integrate g(x) over the given boundaries, such that
+$$
+G(x) = \begin{cases}
+0, & x < 0, \\
+\frac{c}{\alpha} x^\alpha, & 0<x<1, \\
+-ce^{-x} + \frac{c}{\alpha} + ce^{-1}, & x \geq 1
+\end{cases}.
+$$
+Inverting the CDF gives
+$$
+G^{-1}(x) = \begin{cases}
+(\frac{\alpha}{c}x)^{\frac{1}{\alpha}}, & 0<x<\frac{c}{\alpha}, \\
+-\log(\frac{1}{\alpha} + e^{-1} - \frac{x}{c}), & \frac{c}{\alpha} \leq x \leq 1
+\end{cases}.
+$$
+
+As the total probability needs to sum to $1$, we get that the normalizing constant $c$ in this case is given as
+$$
+c = \frac{\alpha\cdot e}{\alpha + e}.
+$$
+
+#### b)
+Then we create a function `gsample()` generating `n` samples from the distribution of $g(x)$. 
+```{r}
+gsample <- function(alpha, c, n){
+  u = runif(n)
+  threshold = c/alpha
+  x = ifelse(u < threshold, (alpha*u/c)^(1/alpha), -log((1/alpha) + exp(-1) - (u/c)))
+  return(x)
+}
+alpha = 0.5
+c = (alpha*exp(1))/(exp(1) + alpha)
+xvec <- gsample(0.5, c, 1000)
+g <- function(x){ifelse(x>=1, c*exp(-x), c*x^(alpha-1))}
+hist(xvec, n = 50, freq = F)
+lines(seq(0, 5, 0.01), g(seq(0, 5, 0.01)), col = "red", lwd = 2)
+
+```
+
+### A3
+Now we consider the distribution with PDF
+$$
+f(x) = \frac{ce^{\alpha x}}{(1 + e^{\alpha x})^2},
+$$
+with parameter $\alpha$ and normalizing constant $c$.
+
+#### a)
+Using the fact that for any PDF
+$$
+\int_{-\infty}^{\infty} f(x) dx = 1,
+$$
+and integrating $f(x)$ by substitution with $u = 1 + e^{\alpha x}$ such that $\frac{du}{dx} = \alpha e^{\alpha x}$,
+$$
+\int_{-\infty}^{\infty} f(x) dx = \int_{-\infty}^{\infty}\frac{ce^{\alpha x}}{(1 + e^{\alpha x})^2} dx = \frac{c}{\alpha} \int_{1}^{\infty} u^{-2} du = \frac{c}{\alpha}\left[-\frac{1}{u} \right]_{1}^{\infty} = \frac{c}{\alpha} = 1,
+$$
+such that the normalizing constant becomes
+$$
+\underline{\underline{c = \alpha}}.
+$$
+
+#### b)
+The integrated PDF, CDF, with $c = \alpha$  is found by
+$$
+F(x) = \int_{-\infty}^{x} f(x) dx = \int_{-\infty}^{x}\frac{\alpha e^{\alpha x}}{(1 + e^{\alpha x})^2} dx =  \int_{1}^{1 + e^{\alpha x}} u^{-2} du = \left[-\frac{1}{u} \right]_{1}^{1 + e^{\alpha x}} = \frac{e^{\alpha x}}{1 + e^{\alpha x}}.
+$$
+The inverted CDF is then
+$$
+F^{-1} (x) = \frac{1}{\alpha}\log(\frac{x}{1-x}).
+$$
+
+#### c)
+We now create a function `fsample()` simulating `n` samples from the distribution of $f(x)$.
+```{r}
+fsample <- function(alpha, n){
+  u = runif(n)
+  x = (1/alpha)*log(u/(1-u))
+  return(x)
+}
+alpha = 0.5
+ns = 100000
+f <- function(x){alpha*exp(alpha*x)/(1 + exp(alpha*x))^2}
+hist(fsample(alpha, ns), n = 50, freq = F)
+lines(seq(-20,20,0.05), f(seq(-20,20,0.05)), col = "red", lwd = 2)
+```
+
+### A4
+We will now use the Box-Müller algorithm to simulate samples from a standard normal distribution.
+```{r}
+n = 10000
+box_muller <- function(n) {
+  u1 <- runif(n, 0,2*pi)
+  u2 <- expsample(0.5, n)
+  
+  x1 <- sqrt(u2)*cos(u1)
+  x2 <- sqrt(u2)*sin(u1)
+  return(list(x1 = x1, x2 = x2, m = matrix(c(x1,x2), nrow = 2)))
+}
+hist(box_muller(n)$x1, n = 50, freq = F)
+lines(seq(-4, 4, 0.01), dnorm(seq(-4, 4, 0.01)), col = "red", lwd = 2)
+```
+
+### A5
+Now, we will create a function `multi_normal()` sampling from a multivariate normal distribution with mean vector $\mathbf{\mu}$ and covariance matrix $\Sigma$.
+```{r}
+std_normal <- function(dim, n = 1000) {
+  loop = seq(1,dim-1,2)
+  m = matrix(, nrow = dim, ncol = n)
+  for(i in loop) {
+    
+    m[c(i,i+1),] <- box_muller(n)$m
+  }
+  if(i+1 < dim) {
+     m[dim,] <- box_muller(n)$x1
+  }
+  return(m)
+}
+
+multi_normal <- function(mu, sig, n=1000) {
+  X <- std_normal(length(mu), n)
+  A <- chol(sig)
+  return(mu + t(A) %*% X)
+}
+```
+We assess the function evaluating the sample mean and sample covariance matrix against a predefined mean and predefinedcovariance matrix.
+```{r}
+#testing the function
+s <- matrix(c(4,1,1,4), nrow = 2)
+mu <- c(4,2)
+test <- multi_normal(mu, s,n=10000)
+
+print(data.frame("Sample_mu1" = mean(test[1,]), "mu1" = mu[1], "Sample_mu2" = mean(test[2,]), "mu2" = mu[2]))
+```
+```{r}
+# Sample covariance matrix
+print(matrix(c(cov(test[1,], test[1,]), cov(test[1,], test[2,]), 
+               cov(test[2,], test[1,]), cov(test[2,], test[2,])), ncol = 2))
+```
+```{r}
+# Covariance matrix
+print(s)
+```
+The obtained results asserts that the magnitude of the means and covariances are in the neighbourhood of the predefined ones ensuring our function to work as expected.
+
+
+
+## Problem B
+
+### B1
+Consider the gamma distribution
+$$
+f(x) = \begin{cases}
+\frac{1}{\Gamma(\alpha)}x^{\alpha - 1}e^{-x}, & 0<x, \\
+0, & \textrm{otherwise}
+\end{cases}.
+$$
+Rejection sampling can be used to generate samples from this distribution by using samples from the distribution considered in A2. Let the density be
+$$
+g(x) = \begin{cases}
+x^{\alpha-1}, & 0<x<1, \\
+e^{-x}, & 1 \leq x, \\
+0, & \textrm{otherwise}
+\end{cases}.
+$$
+
+#### a)
+The acceptance probability is given by
+$$
+\frac{1}{c}\frac{f(x)}{g(x)} = \begin{cases}
+\frac{1}{c\cdot\Gamma(\alpha)}e^{-x}, & 0<x<1, \\
+\frac{1}{c\cdot\Gamma(\alpha)}x^{\alpha-1}, & 1 \leq x, \\
+0, & \textrm{otherwise}
+\end{cases},
+$$
+where 
+$$
+c = \frac{1}{\Gamma(\alpha)}
+$$
+gives the highest acceptance probability for all x.
+
+#### b)
+We now write the function `rejection_sampling1()` generating `n` independent samples from the distribution of $f(x)$.
+```{r, message = FALSE, error=FALSE, warning=FALSE}
+rejection_sampling1 <- function(alpha, n){
+  alpha = 0.5
+  c = (alpha*exp(1))/(exp(1) + alpha)
+  count = 0
+  x = c(NA)
+  while (count < n) {
+    values = gsample(alpha, c, n)
+    a = ifelse(values < 1, exp(-values), values^(alpha-1))
+    u = runif(n)
+    values = ifelse(u - a < 0, values, NA)
+    x = c(x,values)
+    x = na.omit(x)
+    count = length(x)
+  }
+  x = x[1:n]
+  return(x)
+}
+hist(rejection_sampling1(0.5, 100000),freq=F, n = 100)
+x <- seq(0.001, 5,.01)
+lines(x,dgamma(x, 0.5,1), col = "red", lwd = 2)
+```
+
+### B2
+Consider the uniforms method to simulate the same gamma distribution with $\alpha > 1$.
+Defining as in the lecture
+$$
+C_f = \left\{(x_1,x_2):0\leq x_1 \leq \sqrt{f^*(\frac{x_2}{x_1})}\right\} \;,\;\;\; \text{where} \;\;\; f^*(x) = \begin{cases}
+x^{\alpha - 1}e^{-x}, & 0<x, \\
+0, & \textrm{otherwise}
+\end{cases}
+$$
+and
+$$
+a = \sqrt{\sup_x f^*(x)} \;,\;b_+ = \sqrt{\sup_{x\geq0} x^2 f^*(x)}\;,\;b_- = \sqrt{\sup_{x\leq0} x^2 f^*(x)}
+$$
+such that
+$$
+C_f \subset [0,a] \times[b_-, b_+].
+$$
+#### a) 
+We want the expressions for $a$, $b_+$ and $b_-$. 
+We get the supremum of $f^*(x)$ for all $x$ and $\alpha > 1$ by differentiating $f^*(x)$ with respect to $x$ and setting the result equal to zero. This gives
+$$
+\frac{df^*}{dx}(x) = x^{\alpha - 1}e^{-x}\left(\frac{1}{x}(\alpha - 1) - 1 \right) = 0
+$$
+such that
+$$
+x = \alpha - 1
+$$
+maximizes $f^*(x)$ as $\frac{d^2f^*}{dx^2}(\alpha - 1) < 0$ for $\alpha > 1$. By inserting this value of $x$ into $f^*(x)$ we get its supremum, and $a$ is then given by
+$$
+a = \sqrt{\sup_x f^*(x)} = \sqrt{f^*(\alpha - 1)} = \sqrt{(\alpha-1)^{\alpha -1}e^{-(\alpha-1)}} = \underline{\underline{(\alpha-1)^{\frac{\alpha - 1}{2}}e^{-\frac{\alpha-1}{2}}}}.
+$$
+
+We find $b_+$ similarly as $a$, but in this case we want to maximize the function
+$$
+\tilde{f^*}(x) = x^2f^*(x) = x^{\alpha + 1}e^{-x}.
+$$
+Similar calculations and arguments as for $a$ gives the maximum of $\tilde{f^*}(x)$ to be in 
+$$
+x = \alpha + 1,
+$$
+which gives the expression for $b_+$
+$$
+b_+ = \sqrt{\sup_{x\geq0} x^2 f^*(x)} = \sqrt{\sup_{x\geq0} \tilde{f^*}(x)} = \sqrt{ (\alpha +1)^2 f^*(\alpha+1)} = \sqrt{(\alpha+1)^{\alpha + 1}e^{-(\alpha + 1)}} = \underline{\underline{(\alpha + 1) ^{\frac{\alpha + 1}{2}}e^{-\frac{\alpha + 1}{2}}}}.
+$$
+
+Since $f^*(x) = 0$ for all $x \leq 0$ when $\alpha > 1$, 
+$$
+b_- = \sqrt{\sup_{x\leq0} x^2 f^*(x)} = \sqrt{0} = \underline{\underline{0}}.
+$$
+
+#### b)
+```{r}
+ratio_of_uniforms_f <- function(alpha, n){
+  loga = ((alpha - 1)/2)*log(alpha-1) + (1-alpha)/2
+  bmin = 0
+  logbmax = ((alpha + 1)/2)*log(alpha+1) - (alpha + 1)/2
+  x = rep(NA, n)
+  attempts = 0
+  for (i in 1:n) {
+    finnished = 0
+    while(finnished ==0) {
+      logx1 = loga + log(runif(1,0,1))
+      logx2 = logbmax + log(runif(1,0,1))
+      y = exp(logx2 - logx1)
+      if(logx1 - (1/2)*((alpha - 1)*log(y) - y)< 0){
+        x[i] = y
+        finnished = 1
+      }
+      else
+      {attempts = attempts + 1}
+    }
+  }
+  return(list(x = x, trials = n + attempts))
+}
+
+alphavec = seq(1,2000, 1)
+trialvec = rep(NA,1999)
+for(alpha_i in 2:2000){
+  trialvec[alpha_i] = ratio_of_uniforms_f(alpha_i, 1000)$trials
+}
+plot(x = alphavec, y = trialvec, type = "l", col = "red", lwd = 2)
+```
+We observe that the number of trials increases logarithmically as a function of increasing $\alpha$. This can be interpreted as that the rectangle we make around the density function gets logarithmically larger compared to the density function itself as $\alpha$ increases.  
+
+
+### B3
+
+We will now write a function generating samples from a gamma distribution both given the shape parameter $\alpha$ and the scale parameter $\frac{1}{\beta}$, where
+$$
+f(x) = \frac{\beta^\alpha}{\Gamma(\alpha)}x^{\alpha - 1} e^{-\beta x}.
+$$
+We approach this problem by rewriting the functions from B2 and B3 including the inverted scale parameter $\beta$, and deciding when to use the `rejection_sampling()` ($\alpha < 1$), when to use `ratio_of_uniforms()` ($\alpha > 1$), and what to do when $\alpha = 1$.  This all begins in the `gsample()` function, where we need now to consider 
+$$
+g(x) = \begin{cases}
+cx^{\alpha-1}, & 0<x<1, \\
+ce^{-\beta x}, & 1 \leq x, \\
+0, & \textrm{otherwise}
+\end{cases},
+$$
+where other terms with $\alpha$ and $\beta$ independent of $x$ are contained in $c$. Then
+$$
+G(x) = \begin{cases}
+0, & x < 0, \\
+\frac{c}{\alpha} x^\alpha, & 0<x<1, \\
+-\frac{c}{\beta}e^{-\beta x} + \frac{c}{\alpha} + \frac{c}{\beta}e^{-\beta}, & x \geq 1
+\end{cases} 
+\implies
+G^{-1}(x) = \begin{cases}
+0, & x < 0, \\
+(\frac{\alpha}{c}x)^{\frac{1}{\alpha}}, & 0<x<\frac{c}{\alpha}, \\
+-\frac{1}{\beta}\log(\frac{\beta}{\alpha} + e^{-\beta} - \frac{x\beta}{c}), & \frac{c}{\alpha} \leq x \leq 1
+\end{cases}.
+$$
+As the CDF sums to 1, an appropriate normalizing constant $c$ in `gsample()` is then
+$$
+c = \frac{1}{\frac{1}{\beta}e^{-\beta} + \frac{1}{\alpha}}.
+$$
+For the new `rejection_sampling()`, we need a new acceptance probability, given by
+$$
+\frac{1}{c}\frac{f(x)}{g(x)} = \begin{cases}
+\frac{\beta^{\alpha}}{c\cdot\Gamma(\alpha)}e^{-\beta x}, & 0<x<1, \\
+\frac{\beta^{\alpha}}{c\cdot\Gamma(\alpha)}x^{\alpha-1}, & 1 \leq x, \\
+0, & \textrm{otherwise}
+\end{cases}
+$$
+where $g(x)$ is the same as above with $c = 1$, and
+$$
+c = \frac{\beta^\alpha}{\Gamma(\alpha)}
+$$
+yelds the highest acceptance probability in the `rejection_samping()` algorithms.
+We now update `gsample()` to `gsample1()` and then `rejection_sampling1()` to `rejection_sampling2()` as follows.
+```{r}
+gsample1 <- function(alpha, beta, c, n){
+  u = runif(n)
+  threshold = c/alpha
+  x = ifelse(u < threshold, (alpha*u/c)^(1/alpha), -(1/beta)*log((beta/alpha) + exp(-beta) - (u*beta/c)))
+  return(x)
+}
+
+rejection_sampling2 <- function(alpha, beta, n){
+  #alpha = 0.5
+  c = 1/((1/beta)*exp(-beta) + (1/alpha))
+  count = 0
+  x = c(NA)
+  while (count < n) {
+    values = gsample1(alpha, beta, c, n)
+    a = ifelse(values < 1, exp(-beta*values), values^(alpha-1))
+    u = runif(n)
+    values = ifelse(u - a < 0, values, NA)
+    x = c(x,values)
+    x = na.omit(x)
+    count = length(x)
+  }
+  x = x[1:n]
+  return(x)
+}
+```   
+For $\alpha > 1$, we consider the `ratio_of_uniforms()` function and adjust it to work with a predefined $\beta$. Doing similar prior calculations as above, including $\beta$ gives
+$$
+a = \left(\frac{\alpha - 1}{\beta} \right)^{\frac{\alpha-1}{2}}e^{-\frac{\alpha - 1}{2}}, \space b_+ = \left(\frac{\alpha + 1}{\beta} \right)^{\frac{\alpha+1}{2}}e^{-\frac{\alpha + 1}{2}}, \space b_- = 0,
+$$
+such that our new `ratio_of_uniforms()` function becomes as follows. 
+```{r}
+ratio_of_uniforms1 <- function(alpha, beta, n){
+  loga = ((alpha - 1)/2)*log((alpha-1)/beta) + (1-alpha)/2
+  bmin = 0
+  logbmax = ((alpha + 1)/2)*log((alpha+1)/beta) - (alpha + 1)/2
+  x = rep(NA, n)
+  attempts = 0
+  for (i in 1:n) {
+    finnished = 0
+    while(finnished ==0) {
+      logx1 = loga + log(runif(1,0,1))
+      logx2 = logbmax + log(runif(1,0,1))
+      y = exp(logx2 - logx1)
+      if(logx1 - (1/2)*((alpha - 1)*log(y) - beta*y)< 0){
+        x[i] = y
+        finnished = 1
+      }
+      else
+      {attempts = attempts + 1}
+    }
+  }
+  return(list(x = x, trials = n + attempts))
+}
+```
+For $\alpha = 1$, we are only left with the exponential function with parameter $\beta$ and we simply sample from the exponential distribution. Thus, we create the general function `gamma_sample()` as follows.
+```{r}
+gamma_sample <- function(alpha, beta, n){
+  if(alpha < 1){x = rejection_sampling2(alpha, beta, n)}
+  if(alpha == 1){x = expsample(beta, n)}
+  if(alpha > 1){x = ratio_of_uniforms1(alpha, beta,n)$x}
+  return(x)
+}
+hist(gamma_sample(3,2,10000), n = 100, freq = F)
+x <- seq(0.001, 17,.1)
+lines(x,dgamma(x, 3,rate = 2), col = "red", lwd = 2)
+```
+
+
+### B4
+
+We let $x\sim Gamma(\alpha,1)$, $y \sim Gamma(\beta,1)$ and $z = \frac{x}{x+y}$.
+
+#### a)
+The joint PDF of $x$ and $y$ is then
+$$
+g(x,y) = \frac{1}{\Gamma(\alpha)\Gamma(\beta)}x^{\alpha-1}y^{\beta-1}e^{-(x+y)}.
+$$
+We then introduce the transformations
+$$
+u = \frac{x}{x+y} \space \space\space \textrm{and} \space \space\space  v = x+y.
+$$
+Calculating the inverse of these gives
+$$
+x = uv \space \space\space \textrm{and} \space \space\space y = v - uv.
+$$
+The determinant of the Jacobian matrix yelds $v(1-u) + uv = v = x+y$. This gives the joint PDF of $u$ and $v$ as
+$$
+f(u,v) = |v|\frac{1}{\Gamma(\alpha)\Gamma(\beta)}(uv)^{\alpha-1}(v-uv)^{\beta-1}e^{-v}, 
+$$
+for $0 < u < 1, 0 < v < \infty$.
+Setting $z = u$, we get the marginal pdf of $z$, $f(z)$, by integrating the joint PDF above with respect to $v$.
+$$
+f(z) = \frac{1}{\Gamma(\alpha)\Gamma(\beta)}z^{\alpha-1}(1-z)^{\beta-1}\int_0^\infty v^{\alpha+\beta-1}e^{-v}dv = \frac{1}{\Gamma(\alpha)\Gamma(\beta)}z^{\alpha-1}(1-z)^{\beta-1}, 
+$$
+for $0<z<1$, which we wanted to show.
+
+#### b)
+We now simulate from the beta distribution by the function `beta_sample()`, first by sampling from two gamma distributions to two samples `x` and `y`, and then calculate the sample of `z` which, as shown above, is beta distributed with parameters $\alpha$ and $\beta$.
+```{r}
+beta_sample <- function(alpha, beta, n){
+  x <- gamma_sample(alpha, 1, n)
+  y <- gamma_sample(beta, 1, n)
+  z = x/(x+y)
+  return(z)
+}
+hist(beta_sample(3,2,10000), n = 100, freq = F)
+x <- seq(0.001, 1,.01)
+lines(x,dbeta(x, 3,2), col = "red", lwd = 2)
+```
+
+
+### C1
+
+Let $\theta = P(X > 4)$ when $X \sim N(0,1)$. Using Monte Carlo integration to calculate $\theta$, we get that the estimate $\hat\theta = \frac{1}{n}\sum_{i=1}^n h(x_i)$ where
+$$
+h(x) = \begin{cases}
+1, & x>4, \\
+0, & \textrm{otherwise}
+\end{cases}
+$$
+
+
+We get the following estimate of theta and confidence interval
+```{r}
+n <- 100000
+X <- box_muller(n)$x1
+H <- ifelse(X < 4, 0, 1)
+
+#the expected value
+
+theta_hat <- mean(H)
+
+#the variance 
+var_theta_hat <- var(H)/n
+
+#the confidence interval, assuming the central limit theorem
+data <- data.frame("ThetaHat" = theta_hat, "ConfIntLower" = theta_hat-1.96*sqrt(var_theta_hat),
+                 "ConfIntUpper" = theta_hat+1.96*sqrt(var_theta_hat))
+row.names(data) <- "MC integration"
+print(data)
+
+
+#matrix created for a plot later.
+res <- matrix(nrow = 3, ncol =2)
+res[1,1] <- 1-pnorm(4)
+res[2,1] <- theta_hat
+res[2,2] <- var_theta_hat
+
+```
+
+### C2
+
+We now use importance sampling to estimate $\theta$ via sampling from
+$$
+g(x) = \begin{cases}
+cx \exp(-\frac{1}{2}x^2), & x>4, \\
+0, & \textrm{otherwise}
+\end{cases}
+$$
+where c is a normalizing constant.The normalizing constant is found by the integral
+$$
+\int_X g(x)dx = \int_4^\infty cx \exp(-\frac{1}{2}x^2) dx = 1
+$$
+Which gives the $c = \exp(8)$.
+First, a function that samples from g is constructed.
+```{r}
+#sampling from g(x)
+g <- function(c=exp(8), n=1000) {
+  u <- runif(n, 0,c*exp(-8))
+  x <- sqrt(-2*log(-u/c+exp(-8)))
+  return(x)
+}
+hist(g(), n = 100, freq = F)
+```
+the weight is given buy 
+$$
+w(x) = \frac{f(x)}{g(x)} = \begin{cases}
+ \frac{e^{-8}}{x \sqrt{2 \pi}}, & x>4, \\
+0, & \textrm{otherwise}
+\end{cases}
+$$
+The imporance sampling estimator is defined by
+
+$$
+\hat{\theta}_{IS} = \frac{1}{n}\sum_{i=1}^n h(x_i)w(x_i) = \frac{1}{n}\sum_{i=1}^n w(x_i)
+$$
+We get the following function for the importance sampling 
+```{r}
+importance_sampling <- function(n=100000) {
+  x <- g(n)
+  c <- exp(8)
+  w <- 1/(c*x*sqrt(2*pi))
+  theta_is_hat_exp <- mean(w)
+  theta_is_hat_var <- var(w)/n
+  return(list(x = x, theta_is_hat_exp = theta_is_hat_exp, theta_is_hat_var = theta_is_hat_var))
+}
+r <- importance_sampling()
+res[3,1] <- r$theta_is_hat_exp
+res[3,2] <- r$theta_is_hat_var
+```
+```{r}
+#the confidence interval, assuming the central limit theorem
+
+d <- data.frame("ThetaHat" = res[3,1], "ConfIntLower" = res[3,1]-1.96*sqrt(res[3,2]),
+                 "ConfIntUpper" = res[3,1]+1.96*sqrt(res[3,2]))
+row.names(d) <- "Importance sampling"
+print(d)
+data <- rbind(data, d)
+
+```
+Above is the expected value and confidence interval from the importance sampeling. Clearly importance sampling gives a more accurate result with less variance then by Monte Carlo integration. Below the differences are visualized.
+```{r}
+library(tidyverse)
+
+data.frame(model = c("Monte Carlo Est", paste("Importance sampling" )),
+           mean = res[-1,1], sd =  sqrt(res[-1,2])) %>%
+  mutate(lower = mean-2*sd, upper = mean+2*sd) %>%
+  ggplot() + geom_errorbar(aes(x = model, ymin = lower, ymax = upper)) +
+  geom_point(aes(x = model, y = mean), color = "red") +
+  geom_hline(yintercept = res[1,1], lty = 2) + 
+  xlab("") + ylab("")
+```
+The relative error from importance sampling is
+```{r}
+print(abs(res[1,1] - res[3,1])/res[1,1])
+res[1,1]
+```
+To be conservative the average relative error from importance sampling is of order $10^{-3}$. To get a error of the same order for Montecarlo integration we need at least $10^3$ samples where $x > 4$. Since $\theta \approx 3 \cdot 10^{-5} $ we need about $N = 10^3 \cdot 10^5$ samples to get the same accuracy as with importance sampling.
+
+Below is an illustration of how the Monte Carlo intragrion moves towards the true $\theta$ as n increases
+```{r}
+n <- 100000000
+x <- box_muller(n)$x1
+mc <- cumsum(h(x))/1:n
+
+data.frame(mc = mc,
+           nn = seq_along(mc)) %>%
+  pivot_longer(-nn) %>%
+  ggplot()+geom_line(aes(x = nn, y = value,group = name, color = name))+
+  geom_hline(yintercept = res[1,1], lty = 2)+geom_hline(yintercept = res[3,1], lty = 2, color = "green") 
+```
+
+### C3a
+
+Now the effect of using a modified version of the importance samling function in C.2 will be explored. Instead of generating n random samples from a $U \sim Uniform(0,1)$ we now generate half from the uniformiform distribution and the other half by $1 - u$. These values are now used to sample from $g(x)$. The function is defined as $g2()$ below
+
+```{r}
+g2 <- function(c=exp(8), n=1000) {
+  u <- runif(n, 0,1)
+  u2 <- c(u,1-u)
+  
+  x <- sqrt(-2*log(-u2/c+exp(-8)))
+  return(x)
+}
+```
+
+### C3b
+
+Below is the importance sampling conducted with the samples from the new function $g2()$
+```{r}
+importance_sampling2 <- function(n = 50000) {
+  x <- g2(n = n)
+  c <- exp(8)
+  w <- 1/(c*x*sqrt(2*pi))
+  theta_is_hat_exp <- mean(w)
+  theta_is_hat_var <- var(w)/n
+  return(list(x = x, theta_is_hat_exp2 = theta_is_hat_exp, theta_is_hat_var2 = theta_is_hat_var))
+}
+
+
+ret <- importance_sampling2()
+
+res2 <- matrix(nrow = 3, ncol = 2)
+res2[2,] <- res[3,]
+res2[1,1] <- res[1,1] 
+res2[3,1] <- ret$theta_is_hat_exp2
+res2[3,2] <- ret$theta_is_hat_var2
+
+d <- data.frame("ThetaHat" = res2[3,1], "ConfIntLower" = res2[3,1]-1.96*sqrt(res2[3,2]),
+                 "ConfIntUpper" = res2[3,1]+1.96*sqrt(res2[3,2]))
+row.names(d) <- "Importance sampling antithetic"
+print(d)
+print(data)
+
+```
+
+
+```{r}
+
+data.frame(model = c("g(x) proposal", paste("g(x) proposal  antithetic" )),
+           mean = res2[-1,1], sd =  sqrt(res2[-1,2])) %>%
+  mutate(lower = mean-2*sd, upper = mean+2*sd) %>%
+  ggplot() + geom_errorbar(aes(x = model, ymin = lower, ymax = upper)) +
+  geom_point(aes(x = model, y = mean), color = "red") +
+  geom_hline(yintercept = res[1,1], lty = 2) + 
+  xlab("") + ylab("")
+```
+
+
+### D1
+
+```{r}
+
+```
+
+
+
+### D1
+
+We are now going to sample from a given posterior density
+$$
+f(\theta | \mathbf{y} ) \propto (2+\theta)^{y_1}(1-\theta)^{y_2 + y_3}\theta^{y_4} \space \textrm{for} \space \theta \in (0,1),
+$$
+where $\bf{y}$ is a predefined vector $\mathbf{y} = [125, 18, 20,36]^T$. Using a $U(0,1)$ as a proposal distribution, we create a rejection sampling algorithm to sample from $f(\theta | \mathbf{y})$ as follows, assuming the acceptance probability is minimized for $c = 1$.
+```{r}
+f <- function(x){(2+x)^125 * (1-x)^38 * x^36}
+
+c <- max(f(seq(0,1,0.001)))
+
+rejection_sampling3 <- function(n){
+  count = 0
+  fails = 0
+  x = c()
+  while (count < n) {
+    values = runif(n - count)
+    a = (1/c)*f(values)
+    u = runif(n - count)
+    values = ifelse(u - a < 0, values, NA)
+    x = c(x,values)
+    lenx = length(x)
+    x = na.omit(x)
+    count = length(x)
+    fails = fails + (lenx-count)
+  }
+  #x = x[1:n]
+  return(list(x=x, trials = n + fails))
+}
+rejection_sampling3(1000)$trials
+
+n = seq(1000,10000,100)
+numt <- rep(NA, length(n))
+for(i in 1:91){
+  numt[i] <- rejection_sampling3(n[i])$trials/n[i]
+}
+plot(n, numt, type = "l")
+```
+
+### D2
+
+We now want to estimate a mean using Monte-Carlo integration using $10000$ samples from $f(\theta|\mathbf{y})$.
+```{r}
+that <- (1/10000)*sum(rejection_sampling3(10000)$x)
+that
+```
+```{r}
+fint <- integrate(f, 0,1)$value
+
+
+integrand = function(x){x*f(x)/fint}
+numeric_mean = integrate(integrand, 0,1)$value
+
+
+hist(rejection_sampling3(1000)$x, n = 50, freq = F)
+x = seq(0,1,0.01)
+lines(x,f(x)/fint, col = "red", lwd = 2)
+abline(v = that, col = "green", lwd = 2)
+abline(v = numeric_mean, col = "blue", lwd = 2)
+```
+```{r}
+integrand = function(x){x*f(x)/fint}
+integrate(integrand, 0,1)$value
+```
+
+### D3
+
+The theoretical amount of random samples is calculated approximately numerically in `c` in D1. We have also found the amount from `rejection_sampling3()` as follows.
+```{r}
+rejection_sampling3(1000)$trials
+```
+Sampling areal / relevant areal
+```{r}
+c/fint
+```
+
+### D4
+
+```{r}
+
+weight <- function(x) {(1-x)^4}
+#fpostint = integrate(fpost, 0,1)$value
+importance_sampling1 <- function(n){
+  x <- rejection_sampling3(n)$x
+  w <- weight(x)
+  muhat <- sum(x*w)/sum(w)
+  return(muhat)
+}
+
+importance_sampling1(100000)
+c = na.omit(c(1,2,3,NA))
+d = c(1,1)
+bind(c,d))
+c <- c(c,d)
+length(c)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
